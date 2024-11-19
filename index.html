@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Ameirican Sign Language Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 1rem;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .card {
+            margin: 1rem 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: #007bff;
+            color: #fff;
+            padding: 0.75rem;
+            text-align: center;
+        }
+
+        .card-body {
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .card-body img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .detected-label {
+            font-size: 1.5rem;
+            color: #007bff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Real-Time American Sign Lang Detection</h1> <!-- Video Feed Section -->
+        <div class="card">
+            <div class="card-header">Webcam Video Feed</div>
+            <div class="card-body"> <img id="video-feed" src="/video_feed" alt="Live Video Feed"> </div>
+        </div> <!-- Detected Label Section -->
+        <div class="card">
+            <div class="card-header">Detected Label</div>
+            <div class="card-body">
+                <div id="detected-label" class="detected-label">Loading...</div>
+            </div>
+        </div>
+    </div>
+    <script> // Function to update the video feed 
+        function updateVideoFeed() { 
+            const timestamp = new Date().getTime(); 
+            const videoFeed = document.getElementById("video-feed"); 
+
+            //preload im
+            const newImage = new Image();
+            newImage.onload = () => {
+                videoFeed.src = `/video_feed?timestamp=${timestamp}`; 
+            };
+            newImage.src = `/video_feed?timestamp=${timestamp}`; 
+        } 
+        // Function to update the detected label async 
+        async function updateDetectedLabel() { 
+            try { 
+                const response = await fetch("/latest_label"); 
+                const data = await response.json(); 
+                const detectedLabel = document.getElementById("detected-label"); 
+                detectedLabel.textContent = data.label || "No Detection"; 
+            } catch (error) {
+                console.warn("Error fetching detected label:", error.message);
+            } 
+        } // Refresh video feed and detected label every 500ms 
+        setInterval(updateVideoFeed, 200); 
+        setInterval(updateDetectedLabel, 200); 
+    </script>
+</body>
+
+</html>
