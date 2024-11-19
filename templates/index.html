@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Sign Language Interpreter</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        #label {
+            font-size: 2em;
+            margin: 20px;
+            color: #333;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border: 2px solid #ccc;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Detected Label: <span id="label">{{ label }}</span></h1>
+    <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Live Feed">
+    
+    <script>
+        // Function to update the detected label every 67 milliseconds (~15 FPS)
+        setInterval(() => {
+            fetch('/latest_label')
+                .then(response => response.json())
+                .then(data => {
+                    const labelElement = document.getElementById('label');
+                    // Update the label only if it's not empty
+                    labelElement.textContent = data.label !== "" ? data.label : labelElement.textContent;
+                })
+                .catch(error => console.error('Error fetching label:', error));
+
+            // Update the image source to refresh the video feed
+            const videoFeed = document.getElementById('videoFeed');
+            videoFeed.src = `{{ url_for('video_feed') }}?t=${new Date().getTime()}`;
+        }, 200);  // Update interval set to approximately 15 FPS
+    </script>
+</body>
+</html>
+
