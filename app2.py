@@ -1,90 +1,97 @@
-import requests
-import time
 from flask import Flask, render_template, Response, jsonify
+import cv2
 from PIL import Image
+import time
+import tensorflow as tf
 import numpy as np
-import io
-import threading
 
 app = Flask(__name__)
 
-# Azure Custom Vision API endpoint
-API_URL = "https://signlanguagedetector123-prediction.cognitiveservices.azure.com/customvision/v3.0/Prediction/d46612a9-d79f-40b9-9990-3398d3266afa/classify/iterations/ASL%20GENERAL%20V0.1/image"
+output_layer = 'model_output:0'
+input_node = 'data:0'
 
-# Your Azure prediction key (replace with your actual key)
-API_KEY = "Frus0EhlYR4OFxxDhH0A7YjRc8codSwtAx4fbWVUMQOQL0nvth1XJQQJ99AJACYeBjFXJ3w3AAAIACOG5xwX"
+graph_def = tf.compat.v1.GraphDef()
+labels = []
+
+# These are set to the default names from exported models, update as needed.
+filename = "model/model.pb"
+labels_filename = "model/labels.txt"
+
+with tf.io.gfile.GFile(filename, 'rb') as f:
+    graph_def.ParseFromString(f.read())
+    tf.import_graph_def(graph_def, name='')
+
+with open(labels_filename, 'rt') as lf:
+    for l in lf:
+        labels.append(l.strip())
 
 detected_label = ""  # Global variable to store the detected label
+
+# Create a TensorFlow session
+sess = tf.compat.v1.Session()
+prob_tensor = sess.graph.get_tensor_by_name(output_layer)
 
 def process_image():
     global detected_label
     while True:
-        # Use the pre-saved image from the static folder
-        imageFile = "static/captured.jpg"
-        image = Image.open(imageFile)
+        imageFile = "static/captured.jpg"  # Use the pre-saved image
+        try:
+            image = Image.open(imageFile)
+        except FileNotFoundError:
+            print(f"Image file {imageFile} not found.")
+            time.sleep(1)
+            continue
+
         image = update_orientation(image)
         image = convert_to_opencv(image)
+        image = resize_down_to_1600_max_dim(image)
         h, w = image.shape[:2]
         min_dim = min(w, h)
         max_square_image = crop_center(image, min_dim, min_dim)
+        augmented_image = resize_to_256_square(max_square_image)
 
         network_input_size = 300
-        augmented_image = crop_center(max_square_image, network_input_size, network_input_size)
 
-        # Convert image to bytes for API request
-        image_bytes = image_to_bytes(augmented_image)
+        augmented_image = crop_center(augmented_image, network_input_size, network_input_size)
 
-        # Make the HTTP request to the Azure Custom Vision API
         try:
-            response = requests.post(
-                API_URL,
-                headers={
-                    "Content-Type": "application/octet-stream",
-                    "Prediction-Key": API_KEY
-                },
-                data=image_bytes
-            )
-            response.raise_for_status()  # Raise an error for bad responses
-            result = response.json()
+            predictions = sess.run(prob_tensor, {input_node: [augmented_image] })
+        except KeyError:
+            print("Couldn't find classification output layer: " + output_layer + ".")
+            print("Verify this is a model exported from an Object Detection project.")
+            exit(-1)
 
-            # Extract the predicted label from the response
-            if result['predictions']:
-                detected_label = result['predictions'][0]['tagName']  # The tagName contains the predicted label
-                print(detected_label)
-            else:
-                detected_label = "No prediction"
+        highest_probability_index = np.argmax(predictions)
+        detected_label = labels[highest_probability_index]
 
-        except requests.exceptions.RequestException as e:
-            print(f"Error during prediction request: {e}")
-            detected_label = "Error"
-        
-        # Sleep for 1 second before processing again
-        time.sleep(1)
-
-def image_to_bytes(image):
-    """Convert the image to bytes for sending in the API request."""
-    img_pil = Image.fromarray(image)  # Convert the numpy array back to PIL Image
-    img_byte_arr = io.BytesIO()
-    img_pil.save(img_byte_arr, format="JPEG")
-    img_byte_arr = img_byte_arr.getvalue()
-    return img_byte_arr
+        time.sleep(1)  # Wait for 1 second before processing the image again
 
 def convert_to_opencv(image):
-    """Convert PIL image to OpenCV (BGR) format."""
+    # RGB -> BGR conversion is performed as well.
     image = image.convert('RGB')
     r, g, b = np.array(image).T
     opencv_image = np.array([b, g, r]).transpose()
     return opencv_image
 
 def crop_center(img, cropx, cropy):
-    """Crop the image to the center."""
     h, w = img.shape[:2]
     startx = w // 2 - (cropx // 2)
     starty = h // 2 - (cropy // 2)
     return img[starty:starty + cropy, startx:startx + cropx]
 
+def resize_down_to_1600_max_dim(image):
+    h, w = image.shape[:2]
+    if (h < 1600 and w < 1600):
+        return image
+
+    new_size = (1600 * w // h, 1600) if (h > w) else (1600, 1600 * h // w)
+    return cv2.resize(image, new_size, interpolation=cv2.INTER_LINEAR)
+
+def resize_to_256_square(image):
+    h, w = image.shape[:2]
+    return cv2.resize(image, (300, 300), interpolation=cv2.INTER_LINEAR)
+
 def update_orientation(image):
-    """Update image orientation based on EXIF data."""
     exif_orientation_tag = 0x0112
     if hasattr(image, '_getexif'):
         exif = image._getexif()
@@ -118,6 +125,7 @@ def latest_label():
 
 if __name__ == '__main__':
     # Start the image processing in the background
+    import threading
     threading.Thread(target=process_image, daemon=True).start()
 
     # Run the Flask app

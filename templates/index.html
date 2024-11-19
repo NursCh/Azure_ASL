@@ -5,31 +5,103 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-Time Sign Language Interpreter</title>
     <style>
+        /* Reset some basic styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
+            font-family: 'Arial', sans-serif;
+            background-color: #fafafa;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
-            background-color: #f0f0f0;
-        }
-        #label {
-            font-size: 2em;
-            margin: 20px;
+            padding: 20px;
             color: #333;
         }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #007bff;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #label {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .video-container {
+            margin: 20px 0;
+            position: relative;
+        }
+
         img {
             max-width: 100%;
-            height: auto;
-            border: 2px solid #ccc;
-            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        img:hover {
+            transform: scale(1.05);
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 10px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .footer a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            #label {
+                font-size: 2em;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Detected Label: <span id="label">{{ label }}</span></h1>
-    <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Live Feed">
-    
+
+    <div class="container">
+        <h1>Detected Label: <span id="label">{{ label }}</span></h1>
+        <div class="video-container">
+            <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Live Feed">
+        </div>
+    </div>
+
+
     <script>
         // Function to update the detected label every 67 milliseconds (~15 FPS)
         setInterval(() => {
@@ -45,8 +117,9 @@
             // Update the image source to refresh the video feed
             const videoFeed = document.getElementById('videoFeed');
             videoFeed.src = `{{ url_for('video_feed') }}?t=${new Date().getTime()}`;
-        }, 200);  // Update interval set to approximately 15 FPS
+        }, 1000);
     </script>
+    
 </body>
 </html>
 
