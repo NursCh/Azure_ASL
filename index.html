@@ -73,7 +73,32 @@
             </div>
         </div>
     </div>
-    <script> // Function to update the video feed function updateVideoFeed() { const timestamp = new Date().getTime(); const videoFeed = document.getElementById("video-feed"); videoFeed.src = `/video_feed?timestamp=${timestamp}`; } // Function to update the detected label async function updateDetectedLabel() { try { const response = await fetch("/latest_label"); const data = await response.json(); const detectedLabel = document.getElementById("detected-label"); detectedLabel.textContent = data.label || "No Detection"; } catch (error) { console.error("Error fetching detected label:", error); } } // Refresh video feed and detected label every 500ms setInterval(updateVideoFeed, 500); setInterval(updateDetectedLabel, 500); </script>
+    <script> // Function to update the video feed 
+        function updateVideoFeed() { 
+            const timestamp = new Date().getTime(); 
+            const videoFeed = document.getElementById("video-feed"); 
+
+            //preload im
+            const newImage = new Image();
+            newImage.onload = () => {
+                videoFeed.src = `/video_feed?timestamp=${timestamp}`; 
+            };
+            newImage.src = `/video_feed?timestamp=${timestamp}`; 
+        } 
+        // Function to update the detected label async 
+        async function updateDetectedLabel() { 
+            try { 
+                const response = await fetch("/latest_label"); 
+                const data = await response.json(); 
+                const detectedLabel = document.getElementById("detected-label"); 
+                detectedLabel.textContent = data.label || "No Detection"; 
+            } catch (error) {
+                console.warn("Error fetching detected label:", error.message);
+            } 
+        } // Refresh video feed and detected label every 500ms 
+        setInterval(updateVideoFeed, 200); 
+        setInterval(updateDetectedLabel, 200); 
+    </script>
 </body>
 
 </html>
